@@ -182,6 +182,9 @@ class ObjcppGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
       }
     )
 
+    // prologue header
+    spec.objcppPrologueHeader.foreach(x => refs.body.add("#include " + q(x)))
+
     if (i.ext.cpp) {
       refs.body.add(
         "#import " + q(
@@ -251,6 +254,12 @@ class ObjcppGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
             writeObjcFuncDecl(m, w)
             w.braced {
               w.w("try").bracedEnd(" DJINNI_TRANSLATE_EXCEPTIONS()") {
+                // insert prologue macro
+                spec.objcppPrologueHeader.foreach(x =>
+                  w.wl(
+                    s"""DJINNI_FUNCTION_PROLOGUE("${ident.name}.${m.ident.name}", ${cppSelf}/*${idCpp.ty(ident)}*/, ${idCpp.method(m.ident)});"""
+                  )
+                )
                 m.params.foreach(p => {
                   if (
                     isInterface(
@@ -285,9 +294,15 @@ class ObjcppGenerator(spec: Spec) extends BaseObjcGenerator(spec) {
                 )
 
                 w.wl(";")
-                m.ret.fold()(r =>
+                m.ret.fold()(r => {
+                  // insert prologue for return value
+                  spec.objcppPrologueHeader.foreach(x =>
+                    w.wl(
+                      s"""DJINNI_FUNCTION_RETURN_PROLOGUE("${ident.name}.${m.ident.name}");"""
+                    )
+                  )
                   w.wl(s"return ${objcppMarshal.fromCpp(r, "objcpp_result_")};")
-                )
+                })
               }
             }
           }

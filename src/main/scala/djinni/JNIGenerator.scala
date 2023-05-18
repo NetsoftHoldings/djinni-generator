@@ -88,6 +88,9 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
       case _           =>
     }
 
+    // Add user include file if defined
+    spec.jniPrologueHeader.foreach(x=>jniCpp.add("#include " + q(x)))
+
     def find(ty: TypeRef) { find(ty.resolved) }
     def find(tm: MExpr) {
       tm.args.foreach(find)
@@ -417,6 +420,8 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
             s"${idCpp.method(m.ident)}${params.mkString("(", ", ", ")")}"
           w.w(s"$ret $jniSelfWithParams::JavaProxy::$methodNameAndSignature")
             .braced {
+              val javaMethodName = idJava.method(m.ident)
+              spec.jniPrologueHeader.foreach(x=>w.wl(s"""DJINNI_FUNCTION_PROLOGUE("${ident.name}.${javaMethodName}");"""))
               w.wl(s"auto jniEnv = ::djinni::jniGetThreadEnv();")
               w.wl(s"::djinni::JniLocalScope jscope(jniEnv, 10);")
               w.wl(
@@ -429,7 +434,6 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
                 )
               )
               w.w(call)
-              val javaMethodName = idJava.method(m.ident)
               w.w(s"Handle::get().get(), data.method_$javaMethodName")
               if (m.params.nonEmpty) {
                 w.wl(",")
@@ -501,6 +505,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
             ).braced {
               w.w("try")
                 .bracedEnd(s" JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, $zero)") {
+                  spec.jniPrologueHeader.foreach(x=>w.wl(s"""DJINNI_FUNCTION_PROLOGUE("${ident.name}.${name}");"""))
                   w.wl(s"DJINNI_FUNCTION_PROLOGUE0(jniEnv);")
                   f
                 }
@@ -511,6 +516,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
             ).braced {
               w.w("try")
                 .bracedEnd(s" JNI_TRANSLATE_EXCEPTIONS_RETURN(jniEnv, $zero)") {
+                  spec.jniPrologueHeader.foreach(x=>w.wl(s"""DJINNI_FUNCTION_PROLOGUE("${ident.name}.${name}");"""))
                   w.wl(s"DJINNI_FUNCTION_PROLOGUE1(jniEnv, nativeRef);")
                   f
                 }
@@ -561,6 +567,7 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
                 }
               })
               val methodName = idCpp.method(m.ident)
+              val javaMethodName = idJava.method(m.ident)
               val ret = m.ret.fold("")(r => "auto r = ")
               val call =
                 if (m.static) s"$cppSelf::$methodName("
@@ -573,10 +580,12 @@ class JNIGenerator(spec: Spec) extends Generator(spec) {
                 p => jniMarshal.toCpp(p.ty, "j_" + idJava.local(p.ident))
               )
               w.wl(";")
-              m.ret.fold()(r =>
+              m.ret.fold()(r => {
+               spec.jniPrologueHeader.foreach(x=>w.wl(s"""DJINNI_FUNCTION_RETURN_PROLOGUE("${ident.name}.${javaMethodName}");"""))
                 w.wl(
                   s"return ::djinni::release(${jniMarshal.fromCpp(r, "r")});"
                 )
+                }
               )
             }
           )

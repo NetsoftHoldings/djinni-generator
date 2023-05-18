@@ -61,6 +61,7 @@ object Main {
     var jniClassIdentStyleOptional: Option[IdentConverter] = None
     var jniIncludePrefix: String = ""
     var jniIncludeCppPrefix: String = ""
+    var jniPrologueHeader: Option[String] = None
     var jniFileIdentStyleOptional: Option[IdentConverter] = None
     var jniBaseLibClassIdentStyleOptional: Option[IdentConverter] = None
     var jniGenerateMain: Boolean = true
@@ -85,6 +86,7 @@ object Main {
     var objcppIncludePrefix: String = ""
     var objcppIncludeCppPrefix: String = ""
     var objcppIncludeObjcPrefixOptional: Option[String] = None
+    var objcppPrologueHeader: Option[String] = None
     var objcFileIdentStyleOptional: Option[IdentConverter] = None
     var objcStrictProtocol: Boolean = true
     var objcppNamespace: String = "djinni_generated"
@@ -318,6 +320,12 @@ object Main {
         .text(
           "The prefix for #includes of the main header files from JNI C++ files."
         )
+      opt[String]("jni-prologue-header")
+        .valueName("<header>")
+        .foreach(x => jniPrologueHeader = Some(x))
+        .text(
+          "The header to use for prologue definitions from JNI C++ files"
+        )
       opt[String]("jni-namespace")
         .valueName("...")
         .foreach(x => jniNamespace = x)
@@ -419,6 +427,12 @@ object Main {
         .foreach(x => objcppIncludeObjcPrefixOptional = Some(x))
         .text(
           "The prefix for #import of the Objective-C header files from Objective-C++ files (default: the same as --objcpp-include-prefix)"
+        )
+      opt[String]("objcpp-prologue-header")
+        .valueName("<header>")
+        .foreach(x => objcppPrologueHeader = Some(x))
+        .text(
+          "The header to use for prologue definitions from Objective-C++ files"
         )
       opt[String]("cpp-extended-record-include-prefix")
         .valueName("<prefix>")
@@ -896,6 +910,7 @@ object Main {
       jniHeaderOutFolder,
       jniIncludePrefix,
       jniIncludeCppPrefix,
+      jniPrologueHeader,
       jniNamespace,
       jniClassIdentStyle,
       jniFileIdentStyle,
@@ -915,6 +930,7 @@ object Main {
       objcppIncludePrefix,
       objcppIncludeCppPrefix,
       objcppIncludeObjcPrefix,
+      objcppPrologueHeader,
       objcppNamespace,
       objcSwiftBridgingHeaderWriter,
       cppCliOutFolder,
